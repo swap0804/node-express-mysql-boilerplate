@@ -9,6 +9,7 @@ const Entrypoint = require("../models/Entrypoints");
 const ClientSecrete = require("../models/Oauth_clients");
 const sequelize = require("../../config/database");
 const axios = require("axios");
+const moment = require("moment");
 
 // const message = (req) => {
 // 	let message = req.flash('error');
@@ -172,9 +173,20 @@ exports.login = (req, res, next) => {
 
 exports.getTenentToken = async (req, res, next) => {
   try {
-    const { ip, hostname } = req.body;
-    if (!ip || !hostname) {
-      return res.status(400).json({ error: "IP and hostname are required" });
+    const { hostname = "app" } = req.body;
+    if (!hostname) {
+      return res.status(400).json({ error: "hostname are required" });
+    }
+    const storedData = await client.get(hostname);
+    if (storedData) {
+      const parsedData = JSON.parse(storedData);
+      const tokenExpiry = new Date(parsedData.tokenExpiry);
+      const currentTime = new Date();
+      if (currentTime < tokenExpiry) {
+        return res
+          .status(200)
+          .json({ status: true, message: "Access_Token", data: parsedData });
+      }
     }
     const result = await sequelize.query(
       `SELECT e.*, oc.*
@@ -189,11 +201,6 @@ exports.getTenentToken = async (req, res, next) => {
     );
 
     if (result.length > 0) {
-      console.log("Record found:", result);
-      // return res
-      //   .status(200)
-      //   .json({ message: "IP already exists", data: result[0] });
-      console.log("ssss", result[0].client_id, result[0].client_secret);
       const req = await axios.post(
         "https://api.bunidiner.com/api/v1/Auth/token",
         {},
@@ -206,22 +213,23 @@ exports.getTenentToken = async (req, res, next) => {
         }
       );
       const data = await req.data;
-      console.log("Data received:", data);
-      return res.status(200).json({ message: "Access_Token", data });
+      const tokenExpiry = moment().add(data.expires_in, "seconds");
+      const redisData = {
+        hostname,
+        token: data.access_token,
+        tokenExpiry: new Date(tokenExpiry),
+      };
+      await client.set(hostname, JSON.stringify(redisData));
+      return res
+        .status(200)
+        .json({ staus: true, message: "Access_Token", data });
     } else {
       console.log("No record found with the provided URL.");
-      return null;
+      return res.status(400).json({
+        staus: false,
+        message: "No record found with the provided URL.",
+      });
     }
-
-    // const existingHostname = await client.get(ip);
-    // if (existingHostname) {
-
-    // } else {
-    //   await client.set(ip, hostname);
-    //   res
-    //     .status(201)
-    //     .json({ message: "IP and hostname added successfully", ip, hostname });
-    // }
   } catch (error) {
     console.error("Error checking or adding IP:", error);
     res.status(500).json({ error: "Internal Server Error" });
