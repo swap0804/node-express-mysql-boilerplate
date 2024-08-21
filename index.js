@@ -1,22 +1,12 @@
 const path = require("path");
 // load dependencies
 const env = require("dotenv");
-const csrf = require("csurf");
 const express = require("express");
-const flash = require("express-flash");
-// const bodyParser = require("body-parser");
 const session = require("express-session");
-const expressHbs = require("express-handlebars");
-const SequelizeStore = require("connect-session-sequelize")(session.Store); // initalize sequelize with session store
 const cors = require("cors");
-const csrfProtection = csrf();
-const router = express.Router();
 const { connectRedis } = require("./config/redisClient");
-
-//Loading Routes
 const routes = require("./routes");
 const sequelize = require("./config/database");
-// const errorController = require('./app/controllers/ErrorController');
 
 const app = express();
 app.use(cors());
