@@ -5,7 +5,7 @@ const moment = require("moment");
 
 exports.getTenentToken = async (req, res, next) => {
   try {
-    const { hostname = "app" } = req.body;
+    const { hostname } = req.body;
     if (!hostname) {
       return res.status(400).json({ error: "hostname are required" });
     }
@@ -27,7 +27,7 @@ exports.getTenentToken = async (req, res, next) => {
        ON CAST(e.tenant_id AS CHAR) COLLATE utf8mb4_general_ci = oc.user_id COLLATE utf8mb4_general_ci
        WHERE e.URL = :url`,
       {
-        replacements: { url: "https://oasisbites.bunidiner.com/" },
+        replacements: { url: `https://${hostname}/` },
         type: sequelize.QueryTypes.SELECT,
       }
     );
